@@ -58,7 +58,11 @@ int eth_getenv_enetaddr_by_index(const char *base_name, int index,
 				 uchar *enetaddr)
 {
 	char enetvar[32];
+#ifndef CONFIG_SINGLE_ETHADDR
 	sprintf(enetvar, index ? "%s%daddr" : "%saddr", base_name, index);
+#else
+	sprintf(enetvar, "%saddr", base_name);
+#endif
 	return eth_getenv_enetaddr(enetvar, enetaddr);
 }
 
