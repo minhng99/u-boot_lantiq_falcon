@@ -513,6 +513,7 @@ depend dep:	$(TIMESTAMP_FILE) $(VERSION_FILE) \
 TAG_SUBDIRS = $(SUBDIRS)
 TAG_SUBDIRS += $(dir $(__LIBS))
 TAG_SUBDIRS += include
+TAG_SUBDIRS += arch/$(ARCH)/include
 
 FIND := find
 FINDFLAGS := -L
@@ -525,8 +526,8 @@ etags:
 		etags -a -o $(obj)etags `$(FIND) $(FINDFLAGS) $(TAG_SUBDIRS) \
 						-name '*.[chS]' -print`
 cscope:
-		$(FIND) $(FINDFLAGS) $(TAG_SUBDIRS) -name '*.[chS]' -print > \
-						cscope.files
+		$(FIND) $(FINDFLAGS) $(TAG_SUBDIRS) -name '*.[chS]' -print | \
+						sort -u > cscope.files
 		cscope -b -q -k
 
 SYSTEM_MAP = \
