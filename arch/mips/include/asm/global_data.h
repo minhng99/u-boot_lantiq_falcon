@@ -56,7 +56,6 @@ typedef	struct	global_data {
 	unsigned long	precon_buf_idx;	/* Pre-Console buffer index */
 #endif
 	phys_size_t	ram_size;	/* RAM size */
-	unsigned long	reloc_off;	/* Relocation Offset */
 	unsigned long	env_addr;	/* Address  of Environment struct */
 	unsigned long	env_valid;	/* Checksum of Environment valid? */
 	void		**jt;		/* jump table */

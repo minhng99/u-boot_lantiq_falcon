@@ -41,10 +41,17 @@ SECTIONS
 	}
 
 	. = ALIGN(4);
-	.rodata  : { *(SORT_BY_ALIGNMENT(SORT_BY_NAME(.rodata*))) }
+	.rodata : {
+		*(SORT_BY_ALIGNMENT(SORT_BY_NAME(.rodata*)))
+		*(SORT_BY_ALIGNMENT(SORT_BY_NAME(.data.rel.ro.*)))
+	}
 
 	. = ALIGN(4);
-	.data  : { *(.data*) }
+	.data :
+	{
+		*(SORT_BY_ALIGNMENT(.data*))
+		*(SORT_BY_ALIGNMENT(.sdata*))
+	}
 
 	. = .;
 	_gp = ALIGN(16);
@@ -54,24 +61,45 @@ SECTIONS
 	  *(.got)
 	  __got_end = .;
 	}
+	num_got_entries = (__got_end - __got_start) >> 2;
 
 	. = ALIGN(4);
-	.sdata  : { *(.sdata*) }
 
-	. = ALIGN(4);
 	.u_boot_cmd : {
 	  __u_boot_cmd_start = .;
 	  *(.u_boot_cmd)
 	  __u_boot_cmd_end = .;
 	}
 
-	. = ALIGN(4);
 	uboot_end_data = .;
-	num_got_entries = (__got_end - __got_start) >> 2;
 
 	. = ALIGN(4);
-	.sbss (NOLOAD)  : { *(.sbss*) }
+	.rel.dyn : {
+		__rel_dyn_start = .;
+		*(.rel*)
+		__rel_dyn_end = .;
+	}
+
+	.dynsym : {
+		__dynsym_start = .;
+		*(.dynsym)
+	}
+
+	.bss __rel_dyn_start (OVERLAY)  : {
+		*(SORT_BY_ALIGNMENT(SORT_BY_NAME(.sbss*)))
+		*(SORT_BY_ALIGNMENT(SORT_BY_NAME(.bss*)))
+		*(SORT_BY_ALIGNMENT(SORT_BY_NAME(.scommon*)))
+		*(SORT_BY_ALIGNMENT(SORT_BY_NAME(COMMON*)))
+	}
+
 	. = ALIGN(4);
-	.bss (NOLOAD)  : { *(.bss*) }
 	uboot_end = .;
+
+	/DISCARD/ : { *(.dynstr*) }
+	/DISCARD/ : { *(.dynamic*) }
+	/DISCARD/ : { *(.hash*) }
+	/DISCARD/ : { *(.plt*) }
+	/DISCARD/ : { *(.interp*) }
+	/DISCARD/ : { *(.gnu*) }
+	/DISCARD/ : { *(.reginfo*) }
 }

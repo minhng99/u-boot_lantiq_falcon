@@ -42,8 +42,13 @@ extern int timer_init(void);
 
 extern int incaip_set_cpuclk(void);
 
+/* Exports from the Linker Script */
 extern ulong uboot_end_data;
 extern ulong uboot_end;
+extern ulong _start;
+
+extern ulong __rel_dyn_start;
+extern ulong __rel_dyn_end;
 
 ulong monitor_flash_len;
 
@@ -243,19 +248,58 @@ void board_init_f(ulong bootflag)
  * that critical any more, etc.
  */
 
+ /* Relocation Entries */
+typedef struct {
+	uint32_t r_offset;	/* Location at which to apply the action */
+	uint32_t r_info;	/* index and type of relocation */
+} rel_entry;
+
+static void fixup_reloc_data(ulong dest_addr)
+{
+	ulong reloc_off = dest_addr - CONFIG_SYS_MONITOR_BASE;
+	ulong data_start = (ulong)&_start;
+	ulong data_end = (ulong)&uboot_end_data;
+	uint32_t addr_rel = (uint32_t)&__rel_dyn_start - reloc_off;
+	uint32_t addr_rel_end = (uint32_t)&__rel_dyn_end - reloc_off;
+	rel_entry *rel = (rel_entry *)addr_rel;
+	rel_entry *rel_end = (rel_entry *)addr_rel_end;
+
+	debug("reloc_off %08lX\n", reloc_off);
+	debug("data_start %08lX\n", data_start);
+	debug("data_end %08lX\n", data_end);
+	debug("rel %08lX\n", (ulong)rel);
+	debug("rel_end %08lX\n", (ulong)rel_end);
+	do {
+		uint32_t offset;
+		uint32_t volatile *offset_data;
+		uint32_t data;
+		if (rel->r_info == 3) {
+			debug ("rel(%08lX): info %d, offset %08X\n",
+				(ulong)rel, rel->r_info, rel->r_offset);
+			offset = rel->r_offset;
+			offset_data = (uint32_t *)offset;
+			offset_data = (uint32_t *)(offset + reloc_off);
+			data = *offset_data+reloc_off;
+			if ((data < data_end) && (data >= data_start))
+				*offset_data = data;
+			debug(" RAM 0x%08X\n", *offset_data);
+		}
+		rel++;
+	} while (rel < rel_end);
+	flush_cache(data_start, data_end-data_start);
+}
+
 void board_init_r(gd_t *id, ulong dest_addr)
 {
 #ifndef CONFIG_SYS_NO_FLASH
 	ulong size;
 #endif
-	extern void malloc_bin_reloc(void);
-#ifndef CONFIG_ENV_IS_NOWHERE
-	extern char *env_name_spec;
-#endif
 	bd_t *bd;
 	ulong malloc_start;
 
 	gd = id;
+
+	fixup_reloc_data(dest_addr);
 	gd->flags |= GD_FLG_RELOC;	/* tell others: relocation done */
 
 	/* The Malloc area is immediately below the monitor copy in DRAM */
@@ -263,29 +307,11 @@ void board_init_r(gd_t *id, ulong dest_addr)
 
 	printf ("Now running in RAM - U-Boot at: %08lx\n", dest_addr);
 
-	gd->reloc_off = dest_addr - CONFIG_SYS_MONITOR_BASE;
-
 	monitor_flash_len = (ulong)&uboot_end_data - dest_addr;
-
-#if defined(CONFIG_NEEDS_MANUAL_RELOC)
-	/*
-	 * We have to relocate the command table manually
-	 */
-	fixup_cmdtable(&__u_boot_cmd_start,
-		(ulong)(&__u_boot_cmd_end - &__u_boot_cmd_start));
-#endif /* defined(CONFIG_NEEDS_MANUAL_RELOC) */
-
-	/* there are some other pointer constants we must deal with */
-#ifndef CONFIG_ENV_IS_NOWHERE
-	env_name_spec += gd->reloc_off;
-#endif
 
 	bd = gd->bd;
 
 	mem_malloc_init(malloc_start, TOTAL_MALLOC_LEN);
-#ifndef CONFIG_RELOC_FIXUP_WORKS
-	malloc_bin_reloc();
-#endif
 
 #ifndef CONFIG_SYS_NO_FLASH
 	/* configure available FLASH banks */
