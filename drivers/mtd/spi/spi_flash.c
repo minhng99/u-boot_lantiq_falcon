@@ -165,7 +165,13 @@ int spi_flash_cmd_poll_bit(struct spi_flash *flash, unsigned long timeout,
 	do {
 		WATCHDOG_RESET();
 
-		ret = spi_xfer(spi, 8, NULL, &status, 0);
+		ret = spi_xfer(spi, 8, &cmd, NULL, SPI_XFER_BEGIN);
+		if (ret) {
+			debug("SF: Failed to send command %02x: %d\n", cmd, ret);
+			return ret;
+		}
+
+		ret = spi_xfer(spi, 8, NULL, &status, SPI_XFER_END);
 		if (ret)
 			return -1;
 
@@ -173,8 +179,6 @@ int spi_flash_cmd_poll_bit(struct spi_flash *flash, unsigned long timeout,
 			break;
 
 	} while (get_timer(timebase) < timeout);
-
-	spi_xfer(spi, 0, NULL, NULL, SPI_XFER_END);
 
 	if ((status & poll_bit) == 0)
 		return 0;
