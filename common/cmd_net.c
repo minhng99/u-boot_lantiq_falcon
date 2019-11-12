@@ -53,6 +53,18 @@ U_BOOT_CMD(
 );
 #endif
 
+#if defined(CONFIG_CMD_DTI)
+int do_dti(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+{
+	return NetLoop(UDP_DTI);
+}
+
+U_BOOT_CMD(
+	dti,	1,	1,	do_dti,
+	"start UDP DTI agent", ""
+);
+#endif
+
 int do_tftpb (cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 	return netboot_common(TFTPGET, cmdtp, argc, argv);

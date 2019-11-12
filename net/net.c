@@ -109,6 +109,9 @@ extern int upload_running;
 void NetReceiveHttpd(volatile uchar * inpkt, int len);
 void NetSendHttpd(void);
 #endif
+#if defined(CONFIG_CMD_DTI)
+#include "dti.h"
+#endif
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -508,6 +511,11 @@ restart:
 #if defined(CONFIG_CMD_DNS)
 		case DNS:
 			DnsStart();
+			break;
+#endif
+#if defined(CONFIG_CMD_DTI)
+		case UDP_DTI:
+			DtiStart();
 			break;
 #endif
 		default:
