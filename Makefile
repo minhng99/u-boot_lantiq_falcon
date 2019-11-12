@@ -558,7 +558,7 @@ $(obj)include/autoconf.mk: $(obj)include/config.h
 	set -e ; \
 	: Extract the config macros ; \
 	$(CPP) $(CFLAGS) -DDO_DEPS_ONLY -dM include/common.h | \
-		sed -n -f tools/scripts/define2mk.sed > $@.tmp && \
+		sed -n -f tools/scripts/define2mk.sed |sort > $@.tmp && \
 	mv $@.tmp $@
 
 $(obj)include/generated/generic-asm-offsets.h:	$(obj)include/autoconf.mk.dep \
