@@ -116,12 +116,21 @@ static u8 DM9000_ior(int);
 static void DM9000_iow(int reg, u8 value);
 
 /* DM9000 network board routine ---------------------------- */
+
+#ifdef CONFIG_DM9000_SWAP16
+#define OFF_8BIT	1
+#define SWAP16(x)	__swab16(x)
+#else
+#define OFF_8BIT	0
+#define SWAP16(x)	(x)
+#endif
+
 #ifndef CONFIG_DM9000_BYTE_SWAPPED
-#define DM9000_outb(d,r) writeb(d, (volatile u8 *)(r))
-#define DM9000_outw(d,r) writew(d, (volatile u16 *)(r))
+#define DM9000_outb(d,r) writeb(d, (volatile u8 *)(r+OFF_8BIT))
+#define DM9000_outw(d,r) writew(SWAP16(d), (volatile u16 *)(r))
 #define DM9000_outl(d,r) writel(d, (volatile u32 *)(r))
-#define DM9000_inb(r) readb((volatile u8 *)(r))
-#define DM9000_inw(r) readw((volatile u16 *)(r))
+#define DM9000_inb(r) readb((volatile u8 *)(r+OFF_8BIT))
+#define DM9000_inw(r) SWAP16(readw((volatile u16 *)(r)))
 #define DM9000_inl(r) readl((volatile u32 *)(r))
 #else
 #define DM9000_outb(d, r) __raw_writeb(d, r)
@@ -220,12 +229,8 @@ static void dm9000_rx_status_8bit(u16 *RxStatus, u16 *RxLen)
 {
 	DM9000_outb(DM9000_MRCMD, DM9000_IO);
 
-	*RxStatus =
-	    __le16_to_cpu(DM9000_inb(DM9000_DATA) +
-			  (DM9000_inb(DM9000_DATA) << 8));
-	*RxLen =
-	    __le16_to_cpu(DM9000_inb(DM9000_DATA) +
-			  (DM9000_inb(DM9000_DATA) << 8));
+	*RxStatus = DM9000_inb(DM9000_DATA) + (DM9000_inb(DM9000_DATA) << 8);
+	*RxLen = DM9000_inb(DM9000_DATA) + (DM9000_inb(DM9000_DATA) << 8);
 }
 
 /*
@@ -541,8 +546,13 @@ void dm9000_read_srom_word(int offset, u8 *to)
 	DM9000_iow(DM9000_EPCR, 0x4);
 	udelay(8000);
 	DM9000_iow(DM9000_EPCR, 0x0);
+#ifdef __BIG_ENDIAN
+	to[0] = DM9000_ior(DM9000_EPDRH);
+	to[1] = DM9000_ior(DM9000_EPDRL);
+#else
 	to[0] = DM9000_ior(DM9000_EPDRL);
 	to[1] = DM9000_ior(DM9000_EPDRH);
+#endif
 }
 
 void dm9000_write_srom_word(int offset, u16 val)
