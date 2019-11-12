@@ -39,6 +39,10 @@
 #include <hush.h>
 #endif
 
+#ifdef CONFIG_CMD_HTTPD
+#include <asm/gpio.h>
+#endif
+
 #include <post.h>
 #include <linux/ctype.h>
 
@@ -292,6 +296,8 @@ int run_command2(const char *cmd, int flag)
 
 void main_loop (void)
 {
+	int ret;
+
 #ifndef CONFIG_SYS_HUSH_PARSER
 	static char lastcommand[CONFIG_SYS_CBSIZE] = { 0, };
 	int len;
@@ -394,15 +400,42 @@ void main_loop (void)
 
 	debug ("### main_loop: bootcmd=\"%s\"\n", s ? s : "<UNDEFINED>");
 
+# ifdef CONFIG_CMD_HTTPD
+#  ifdef CONFIG_HTTP_RECOVER_GPIO
+#ifndef CONFIG_HTTP_RECOVER_GPIO_LEVEL
+#define CONFIG_HTTP_RECOVER_GPIO_LEVEL 1
+#endif
+	ret = gpio_request(CONFIG_HTTP_RECOVER_GPIO, "recover");
+
+	if (ret)
+		printf("Can't request failsafe button GPIO!\n");
+
+	if (gpio_get_value(CONFIG_HTTP_RECOVER_GPIO) == CONFIG_HTTP_RECOVER_GPIO_LEVEL) {
+		show_boot_progress(70);
+		NetLoopHttpd();
+	}
+#  endif
+# endif
+
 	if (bootdelay >= 0 && s && !abortboot (bootdelay)) {
 # ifdef CONFIG_AUTOBOOT_KEYED
 		int prev = disable_ctrlc(1);	/* disable Control C checking */
 # endif
 
-		run_command2(s, 0);
+		ret = run_command2(s, 0);
 
 # ifdef CONFIG_AUTOBOOT_KEYED
 		disable_ctrlc(prev);	/* restore Control C checking */
+# endif
+
+# ifdef CONFIG_CMD_HTTPD
+		if (ret != 0) {
+			printf("Failed to execute bootcmd "
+			       "(maybe invalid u-boot environment?), "
+			       "starting httpd to update firmware...\n");
+			show_boot_progress(70);
+			NetLoopHttpd();
+		}
 # endif
 	}
 

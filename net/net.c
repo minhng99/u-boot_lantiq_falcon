@@ -97,6 +97,18 @@
 #if defined(CONFIG_CMD_DNS)
 #include "dns.h"
 #endif
+#if defined(CONFIG_CMD_HTTPD)
+#include "httpd.h"
+#include "uip-0.9/uipopt.h"
+#include "uip-0.9/uip.h"
+#include "uip-0.9/uip_arp.h"
+static int https_running = 0;
+int httpd_upload_complete = 0;
+unsigned char *httpd_upload_data = 0;
+extern int upload_running;
+void NetReceiveHttpd(volatile uchar * inpkt, int len);
+void NetSendHttpd(void);
+#endif
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -1454,6 +1466,13 @@ NetReceive(volatile uchar *inpkt, int len)
 
 	debug("packet received\n");
 
+#if defined(CONFIG_CMD_HTTPD)
+	if(https_running) {
+		NetReceiveHttpd(inpkt, len);
+		return;
+	}
+#endif
+
 	NetRxPacket = inpkt;
 	NetRxPacketLen = len;
 	et = (Ethernet_t *)inpkt;
@@ -2046,3 +2065,179 @@ ushort getenv_VLAN(char *var)
 {
 	return string_to_VLAN(getenv(var));
 }
+
+#if defined(CONFIG_CMD_HTTPD)
+
+void
+NetSendHttpd(void)
+{
+	volatile uchar *tmpbuf = NetTxPacket;
+	int i;
+
+	for(i = 0; i < 40 + UIP_LLH_LEN; i++) {
+		tmpbuf[i] = uip_buf[i];
+	}
+
+	for(; i < uip_len; i++) {
+		tmpbuf[i] = uip_appdata[i - 40 - UIP_LLH_LEN];
+	}
+	eth_send(NetTxPacket, uip_len);
+}
+
+void
+NetReceiveHttpd(volatile uchar * inpkt, int len)
+{
+#	define BUF ((struct uip_eth_hdr *)&uip_buf[0])
+	memcpy(uip_buf, (const void *)inpkt, len);
+	uip_len = len;
+	if(BUF->type == htons(UIP_ETHTYPE_IP)) {
+		uip_arp_ipin();
+		uip_input();
+		if(uip_len > 0) {
+			uip_arp_out();
+			NetSendHttpd();
+		}
+	} else if(BUF->type == htons(UIP_ETHTYPE_ARP)) {
+		uip_arp_arpin();
+		if(uip_len > 0) {
+			NetSendHttpd();
+		}
+	}
+#undef BUF
+}
+
+int
+NetLoopHttpd(void)
+{
+	unsigned long long tout = 0;
+	bd_t *bd = gd->bd;
+	unsigned short int ip[2];
+	struct uip_eth_addr eaddr;
+
+#ifdef CONFIG_NET_MULTI
+	NetRestarted = 0;
+	NetDevExists = 0;
+#endif
+
+	/* XXX problem with bss workaround */
+	NetArpWaitPacketMAC = NULL;
+	NetArpWaitTxPacket = NULL;
+	NetArpWaitPacketIP = 0;
+	NetArpWaitReplyIP = 0;
+	NetArpWaitTxPacket = NULL;
+	NetTxPacket = NULL;
+	NetTryCount = 1;
+
+	if (!NetTxPacket) {
+		int	i;
+		/*
+		 *	Setup packet buffers, aligned correctly.
+		 */
+		NetTxPacket = &PktBuf[0] + (PKTALIGN - 1);
+		NetTxPacket -= (ulong)NetTxPacket % PKTALIGN;
+		for (i = 0; i < PKTBUFSRX; i++) {
+			NetRxPackets[i] = NetTxPacket + (i+1)*PKTSIZE_ALIGN;
+		}
+	}
+
+	if (!NetArpWaitTxPacket) {
+		NetArpWaitTxPacket = &NetArpWaitPacketBuf[0] + (PKTALIGN - 1);
+		NetArpWaitTxPacket -= (ulong)NetArpWaitTxPacket % PKTALIGN;
+		NetArpWaitTxPacketSize = 0;
+	}
+
+restart:
+
+	eth_halt();
+#ifdef CONFIG_NET_MULTI
+	eth_set_current();
+#endif
+	if (eth_init(bd) < 0) {
+		eth_halt();
+		return(-1);
+	}
+
+#ifdef CONFIG_NET_MULTI
+	memcpy (NetOurEther, eth_get_dev()->enetaddr, 6);
+#else
+	eth_getenv_enetaddr("ethaddr", NetOurEther);
+#endif
+
+	eaddr.addr[0] = NetOurEther[0];
+	eaddr.addr[1] = NetOurEther[1];
+	eaddr.addr[2] = NetOurEther[2];
+	eaddr.addr[3] = NetOurEther[3];
+	eaddr.addr[4] = NetOurEther[4];
+	eaddr.addr[5] = NetOurEther[5];
+
+	uip_setethaddr(eaddr);
+
+	NetCopyIP(&NetOurIP, &bd->bi_ip_addr);
+	NetOurGatewayIP = getenv_IPaddr ("gatewayip");
+	NetOurSubnetMask= getenv_IPaddr ("netmask");
+	NetOurVLAN = getenv_VLAN("vlan");
+	NetOurNativeVLAN = getenv_VLAN("nvlan");
+
+	printf("starting httpd server from server %ld.%ld.%ld.%ld\n",
+		(bd->bi_ip_addr & 0xff000000) >> 24,
+		(bd->bi_ip_addr & 0x00ff0000) >> 16,
+		(bd->bi_ip_addr & 0x0000ff00) >> 8,
+		(bd->bi_ip_addr & 0x000000ff));
+
+	HttpdStart();
+
+	ip[0] = ((bd->bi_ip_addr & 0xffff0000) >> 16);
+	ip[1] = (bd->bi_ip_addr & 0x0000ffff);
+	uip_sethostaddr(ip);
+
+	do_http_progress(HTTP_PROGRESS_START);
+
+	https_running = 1;
+	for (;;) {
+		unsigned long long t1;
+		WATCHDOG_RESET();
+		if(eth_rx() > 0) {
+			HttpdHandler();
+		} else {
+			t1 = get_ticks();
+			if(t1 - tout > 1000) {
+				do_http_progress(HTTP_PROGRESS_TIMEOUT);
+				tout = t1;
+			}
+		}
+
+		if (ctrlc()) {
+			eth_halt();
+			puts ("\nAbort\n");
+			https_running = 0;
+			return (-1);
+		}
+
+		if(!httpd_upload_complete)
+			continue;
+		printf("Bytes transferred = %ld (%lx hex)\n",
+			NetBootFileXferSize,
+			NetBootFileXferSize);
+		eth_halt();
+		do_http_progress(HTTP_PROGRESS_UPLOAD_READY);
+		if(do_http_upgrade(&httpd_upload_data[0], NetBootFileXferSize) == 0) {
+			do_http_progress(HTTP_PROGRESS_UGRADE_READY);
+			udelay(1000 * 10);
+			do_reset (0,0,0,0);
+			return 0;
+		}
+		break;
+	}
+	https_running = 0;
+	NetBootFileXferSize = 0;
+	httpd_upload_complete = 0;
+	upload_running = 0;
+//	free(httpd_upload_data);
+
+	do_http_progress(HTTP_PROGRESS_UGRADE_FAILED);
+
+	goto restart;
+
+	return -1;
+}
+#endif

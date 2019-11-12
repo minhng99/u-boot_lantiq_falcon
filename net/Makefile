@@ -26,6 +26,8 @@ include $(TOPDIR)/config.mk
 # CFLAGS += -DDEBUG
 
 LIB	= $(obj)libnet.o
+UIPDIR  = uip-0.9
+$(shell mkdir -p $(obj)$(UIPDIR))
 
 COBJS-$(CONFIG_CMD_NET)  += bootp.o
 COBJS-$(CONFIG_CMD_DNS)  += dns.o
@@ -35,6 +37,7 @@ COBJS-$(CONFIG_CMD_NFS)  += nfs.o
 COBJS-$(CONFIG_CMD_RARP) += rarp.o
 COBJS-$(CONFIG_CMD_SNTP) += sntp.o
 COBJS-$(CONFIG_CMD_NET)  += tftp.o
+COBJS-$(CONFIG_CMD_HTTPD) += httpd.o $(UIPDIR)/fs.o $(UIPDIR)/httpd.o $(UIPDIR)/uip_arp.o $(UIPDIR)/uip_arch.o $(UIPDIR)/uip.o
 
 COBJS	:= $(COBJS-y)
 SRCS	:= $(COBJS:.o=.c)
