@@ -66,11 +66,11 @@ int do_bootm_linux(int flag, int argc, char * const argv[], bootm_headers_t *ima
 	linux_params_init (UNCACHED_SDRAM (gd->bd->bi_boot_params), commandline);
 
 #ifdef CONFIG_MEMSIZE_IN_BYTES
-	sprintf (env_buf, "%lu", (ulong)gd->ram_size);
-	debug ("## Giving linux memsize in bytes, %lu\n", (ulong)gd->ram_size);
+	sprintf (env_buf, "%lu", (ulong)gd->bd->bi_memsize);
+	debug ("## Giving linux memsize in bytes, %lu\n", (ulong)gd->bd->bi_memsize);
 #else
-	sprintf (env_buf, "%lu", (ulong)(gd->ram_size >> 20));
-	debug ("## Giving linux memsize in MB, %lu\n", (ulong)(gd->ram_size >> 20));
+	sprintf (env_buf, "%lu", (ulong)(gd->bd->bi_memsize >> 20));
+	debug ("## Giving linux memsize in MB, %lu\n", (ulong)(gd->bd->bi_memsize >> 20));
 #endif /* CONFIG_MEMSIZE_IN_BYTES */
 
 	linux_env_set ("memsize", env_buf);

@@ -83,13 +83,6 @@ static int init_func_ram(void)
 	return 1;
 }
 
-static int display_banner(void)
-{
-
-	printf("\n\n%s\n\n", version_string);
-	return 0;
-}
-
 #ifndef CONFIG_SYS_NO_FLASH
 static void display_flash_config(ulong size)
 {
@@ -137,7 +130,7 @@ init_fnc_t *init_sequence[] = {
 	init_baudrate,		/* initialize baudrate settings */
 	serial_init,		/* serial communications setup */
 	console_init_f,
-	display_banner,		/* say that we are here */
+	display_options,	/* say that we are here */
 	checkboard,
 	init_func_ram,
 	NULL,
@@ -260,11 +253,15 @@ void board_init_r(gd_t *id, ulong dest_addr)
 	extern char *env_name_spec;
 #endif
 	bd_t *bd;
+	ulong malloc_start;
 
 	gd = id;
 	gd->flags |= GD_FLG_RELOC;	/* tell others: relocation done */
 
-	debug("Now running in RAM - U-Boot at: %08lx\n", dest_addr);
+	/* The Malloc area is immediately below the monitor copy in DRAM */
+	malloc_start = dest_addr - TOTAL_MALLOC_LEN;
+
+	printf ("Now running in RAM - U-Boot at: %08lx\n", dest_addr);
 
 	gd->reloc_off = dest_addr - CONFIG_SYS_MONITOR_BASE;
 
@@ -285,10 +282,10 @@ void board_init_r(gd_t *id, ulong dest_addr)
 
 	bd = gd->bd;
 
-	/* The Malloc area is immediately below the monitor copy in DRAM */
-	mem_malloc_init(CONFIG_SYS_MONITOR_BASE + gd->reloc_off -
-			TOTAL_MALLOC_LEN, TOTAL_MALLOC_LEN);
+	mem_malloc_init(malloc_start, TOTAL_MALLOC_LEN);
+#ifndef CONFIG_RELOC_FIXUP_WORKS
 	malloc_bin_reloc();
+#endif
 
 #ifndef CONFIG_SYS_NO_FLASH
 	/* configure available FLASH banks */
@@ -335,6 +332,10 @@ void board_init_r(gd_t *id, ulong dest_addr)
 	/* Initialize the console (after the relocation and devices init) */
 	console_init_r();
 /** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** **/
+
+#if defined(CONFIG_STATUS_LED) && defined(STATUS_LED_BOOT)
+	status_led_set (STATUS_LED_BOOT, STATUS_LED_BLINKING);
+#endif
 
 	/* Initialize from environment */
 	load_addr = getenv_ulong("loadaddr", 16, load_addr);
