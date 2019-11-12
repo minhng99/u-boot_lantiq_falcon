@@ -615,6 +615,7 @@ ulong get_PERCLK3(void);
 #endif
 ulong	get_bus_freq  (ulong);
 int get_serial_clock(void);
+ulong get_cpuclk(void);
 
 #if defined(CONFIG_MPC83xx) || defined(CONFIG_MPC85xx)
 ulong get_ddr_freq(ulong);
