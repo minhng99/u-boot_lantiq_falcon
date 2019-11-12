@@ -60,6 +60,7 @@ typedef	struct	global_data {
 	unsigned long	env_valid;	/* Checksum of Environment valid? */
 	void		**jt;		/* jump table */
 	char		env_buf[32];	/* buffer for getenv() before reloc. */
+	unsigned long	timestamp;	/* reference for timer functions */
 } gd_t;
 
 /*

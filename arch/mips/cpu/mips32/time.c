@@ -25,7 +25,7 @@
 #include <asm/mipsregs.h>
 #include <watchdog.h>
 
-static unsigned long timestamp;
+DECLARE_GLOBAL_DATA_PTR;
 
 /* how many counter cycles in a jiffy */
 #define CYCLES_PER_JIFFY	(CONFIG_SYS_MIPS_TIMER_FREQ + CONFIG_SYS_HZ / 2) / CONFIG_SYS_HZ
@@ -37,7 +37,7 @@ static unsigned long timestamp;
 int timer_init(void)
 {
 	/* Set up the timer for the first expiration. */
-	timestamp = 0;
+	gd->timestamp = 0;
 	write_c0_compare(read_c0_count() + CYCLES_PER_JIFFY);
 
 	return 0;
@@ -53,12 +53,12 @@ ulong get_timer(ulong base)
 	count = read_c0_count();
 	while ((count - expirelo) < 0x7fffffff) {
 		expirelo += incr;
-		timestamp++;
+		gd->timestamp++;
 	}
 	write_c0_compare(expirelo);
 	WATCHDOG_RESET();
 
-	return (timestamp - base);
+	return (gd->timestamp - base);
 }
 
 void __udelay(unsigned long usec)
