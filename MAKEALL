@@ -165,6 +165,11 @@ else
 	LOG_DIR="LOG"
 fi
 
+if [ "${MAKEALL_SAVEDIR}" ] ; then
+	SAVE_DIR=${MAKEALL_SAVEDIR}
+	[ -d ${SAVE_DIR} ] || mkdir -p ${SAVE_DIR} || exit 1
+fi
+
 if [ ! "${BUILD_DIR}" ] ; then
 	BUILD_DIR="."
 fi
@@ -508,6 +513,11 @@ build_target() {
 
 	${CROSS_COMPILE}size ${BUILD_DIR}/u-boot \
 				| tee -a ${LOG_DIR}/$target.MAKELOG
+	if [ "${SAVE_DIR}" ] ; then
+		mkdir -p ${SAVE_DIR}/$target
+		cp ${BUILD_DIR}/u-boot* ${SAVE_DIR}/$target/
+		cp ${BUILD_DIR}/System.map ${SAVE_DIR}/$target/
+	fi
 }
 build_targets() {
 	for t in "$@" ; do
