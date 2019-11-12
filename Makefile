@@ -255,6 +255,7 @@ LIBS += drivers/mtd/onenand/libonenand.o
 LIBS += drivers/mtd/ubi/libubi.o
 LIBS += drivers/mtd/spi/libspi_flash.o
 LIBS += drivers/net/libnet.o
+LIBS += drivers/net/falcon/libfalcon.o
 LIBS += drivers/net/phy/libphy.o
 LIBS += drivers/pci/libpci.o
 LIBS += drivers/pcmcia/libpcmcia.o
