@@ -419,7 +419,7 @@ $(obj)u-boot.sha1:	$(obj)u-boot.bin
 		$(obj)tools/ubsha1 $(obj)u-boot.bin
 
 $(obj)u-boot.dis:	$(obj)u-boot
-		$(OBJDUMP) -d $< > $@
+		$(OBJDUMP) -S -d $< > $@
 
 $(obj)u-boot.ubl:       $(obj)spl/u-boot-spl.bin $(obj)u-boot.bin
 		$(OBJCOPY) ${OBJCFLAGS} --pad-to=$(PAD_TO) -O binary $(obj)spl/u-boot-spl $(obj)spl/u-boot-spl-pad.bin
