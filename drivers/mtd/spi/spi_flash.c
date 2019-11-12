@@ -202,6 +202,12 @@ int spi_flash_cmd_erase(struct spi_flash *flash, u8 erase_cmd,
 	u8 cmd[4];
 
 	erase_size = flash->sector_size;
+	if (len % erase_size) {
+		printf("SF: Align erase length (%d) to erase size (%d)",
+			len, erase_size);
+		len = len + erase_size - (len % erase_size);
+		printf(" -> new length %d\n", len);
+	}
 	if (offset % erase_size || len % erase_size) {
 		debug("SF: Erase offset/length not multiple of erase size\n");
 		return -1;
