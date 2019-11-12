@@ -29,6 +29,7 @@ COBJS-$(CONFIG_ALTERA_UART) += altera_uart.o
 COBJS-$(CONFIG_ALTERA_JTAG_UART) += altera_jtag_uart.o
 COBJS-$(CONFIG_ARM_DCC) += arm_dcc.o
 COBJS-$(CONFIG_ATMEL_USART) += atmel_usart.o
+COBJS-$(CONFIG_LTQ_ASC) += ltq_asc.o
 COBJS-$(CONFIG_MCFUART) += mcfuart.o
 COBJS-$(CONFIG_NS9750_UART) += ns9750_serial.o
 COBJS-$(CONFIG_OPENCORES_YANU) += opencores_yanu.o
