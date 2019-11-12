@@ -265,11 +265,12 @@ static uint last_addr_lo;
 static uint last_addr_hi;
 static uint last_reg_lo;
 static uint last_reg_hi;
+static uint last_devad;
 
 static void extract_range(
 	char * input,
-	unsigned char * plo,
-	unsigned char * phi)
+	ushort * plo,
+	ushort * phi)
 {
 	char * end;
 	*plo = simple_strtoul(input, &end, 16);
@@ -286,7 +287,7 @@ static void extract_range(
 static int do_mii(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 	char		op[2];
-	unsigned char	addrlo, addrhi, reglo, reghi;
+	unsigned short	addrlo, addrhi, reglo, reghi;
 	unsigned char	addr, reg;
 	unsigned short	data;
 	int		rcode = 0;
@@ -448,5 +449,165 @@ U_BOOT_CMD(
 	"mii read   <addr> <reg>        - read  MII PHY <addr> register <reg>\n"
 	"mii write  <addr> <reg> <data> - write MII PHY <addr> register <reg>\n"
 	"mii dump   <addr> <reg>        - pretty-print <addr> <reg> (0-5 only)\n"
+	"Addr and/or reg may be ranges, e.g. 2-7."
+);
+
+#define MII_MMD_CTRL 13
+#define MII_MMD_DATA 14
+
+static int mmd_read(const char *devname, unsigned char addr,
+	unsigned short devad, unsigned short reg, unsigned short *value)
+{
+	unsigned short mmd_ctrl;
+
+	mmd_ctrl = devad | (0<<14); /* function "address" = 00b */
+	if (miiphy_write(devname, addr, MII_MMD_CTRL, mmd_ctrl) != 0) {
+		return 1;
+	}
+	if (miiphy_write(devname, addr, MII_MMD_DATA, reg) != 0) {
+		return 1;
+	}
+	mmd_ctrl = devad | (1<<14); /* function "data" = 01b */
+	if (miiphy_write(devname, addr, MII_MMD_CTRL, mmd_ctrl) != 0) {
+		return 1;
+	}
+	if (miiphy_read(devname, addr, MII_MMD_DATA, value) != 0) {
+		return 1;
+	}
+	return 0;
+}
+
+static int mmd_write(const char *devname, unsigned char addr,
+	unsigned short devad, unsigned short reg, unsigned short value)
+{
+	unsigned short mmd_ctrl;
+
+	mmd_ctrl = devad | (0<<14); /* function "address" = 00b */
+	if (miiphy_write(devname, addr, MII_MMD_CTRL, mmd_ctrl) != 0) {
+		return 1;
+	}
+	if (miiphy_write(devname, addr, MII_MMD_DATA, reg) != 0) {
+		return 1;
+	}
+	mmd_ctrl = devad | (1<<14); /* function "data" = 01b */
+	if (miiphy_write(devname, addr, MII_MMD_CTRL, mmd_ctrl) != 0) {
+		return 1;
+	}
+	if (miiphy_write(devname, addr, MII_MMD_DATA, value) != 0) {
+		return 1;
+	}
+	return 0;
+}
+
+
+/* ---------------------------------------------------------------- */
+static int do_mmd(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
+{
+	char		op[2];
+	unsigned short	addrlo, addrhi, reglo, reghi;
+	unsigned char	addr;
+	unsigned short	devad, reg;
+	unsigned short	data;
+	int		rcode = 0;
+	const char	*devname;
+
+	if (argc < 2)
+		return cmd_usage(cmdtp);
+
+#if defined(CONFIG_MII_INIT)
+	mii_init ();
+#endif
+
+	/*
+	 * We use the last specified parameters, unless new ones are
+	 * entered.
+	 */
+	op[0] = last_op[0];
+	op[1] = last_op[1];
+	addrlo = last_addr_lo;
+	addrhi = last_addr_hi;
+	reglo  = last_reg_lo;
+	reghi  = last_reg_hi;
+	data   = last_data;
+	devad  = last_devad;
+
+	if ((flag & CMD_FLAG_REPEAT) == 0) {
+		op[0] = argv[1][0];
+		if (strlen(argv[1]) > 1)
+			op[1] = argv[1][1];
+		else
+			op[1] = '\0';
+
+		if (argc >= 3)
+			extract_range(argv[2], &addrlo, &addrhi);
+		if (argc >= 4)
+			extract_range(argv[3], &reglo, &reghi);
+		if (argc >= 5)
+			devad = simple_strtoul (argv[4], NULL, 16);
+		if (argc >= 6)
+			data = simple_strtoul (argv[5], NULL, 16);
+	}
+
+	/* use current device */
+	devname = miiphy_get_current_dev();
+
+	/*
+	 * check read/write.
+	 */
+	if (op[0] == 'r') {
+		for (addr = addrlo; addr <= addrhi; addr++) {
+			for (reg = reglo; reg <= reghi; reg++) {
+				data = 0xffff;
+				if (mmd_read (devname, addr, devad, reg, &data) != 0) {
+					printf(
+					"Error reading from the PHY addr=%02x reg=%02x\n",
+						addr, reg);
+					rcode = 1;
+				} else {
+					if ((addrlo != addrhi) || (reglo != reghi))
+						printf("addr=%02x devad=%02x reg=%02x data=",
+							addr, devad, reg);
+					printf("%04X\n", data);
+				}
+			}
+			if ((addrlo != addrhi) && (reglo != reghi))
+				printf("\n");
+		}
+	} else if (op[0] == 'w') {
+		for (addr = addrlo; addr <= addrhi; addr++) {
+			for (reg = reglo; reg <= reghi; reg++) {
+				if (mmd_write (devname, addr, devad, reg, data) != 0) {
+					printf("Error writing to the PHY addr=%02x reg=%02x\n",
+						addr, reg);
+					rcode = 1;
+				}
+			}
+		}
+	} else {
+		return cmd_usage(cmdtp);
+	}
+
+	/*
+	 * Save the parameters for repeats.
+	 */
+	last_op[0] = op[0];
+	last_op[1] = op[1];
+	last_addr_lo = addrlo;
+	last_addr_hi = addrhi;
+	last_reg_lo  = reglo;
+	last_reg_hi  = reghi;
+	last_data    = data;
+	last_devad   = devad;
+
+	return rcode;
+}
+
+/***************************************************/
+
+U_BOOT_CMD(
+	mmd,	5,	1,	do_mmd,
+	"MMD utility commands",
+	"read   <addr> <reg> <devad>        - read  MII PHY <addr> MMD <devad> register <reg>\n"
+	"mmd write  <addr> <reg> <devad> <data> - write MII PHY <addr> MMD <devad> register <reg>\n"
 	"Addr and/or reg may be ranges, e.g. 2-7."
 );
