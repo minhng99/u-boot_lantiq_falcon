@@ -44,7 +44,7 @@
 #define CMD_MX25XX_FAST_READ	0x0b	/* Read Data Bytes at Higher Speed */
 #define CMD_MX25XX_PP		0x02	/* Page Program */
 #define CMD_MX25XX_SE		0x20	/* Sector Erase */
-#define CMD_MX25XX_BE		0xD8	/* Block Erase */
+#define CMD_MX25XX_BE		0x52	/* Block Erase */
 #define CMD_MX25XX_CE		0xc7	/* Chip Erase */
 #define CMD_MX25XX_DP		0xb9	/* Deep Power-down */
 #define CMD_MX25XX_RES		0xab	/* Release from DP, and Read Signature */
