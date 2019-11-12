@@ -57,6 +57,7 @@
 #define CP0_CAUSE $13
 #define CP0_EPC $14
 #define CP0_PRID $15
+#define CP0_EBASE $15,1
 #define CP0_CONFIG $16
 #define CP0_LLADDR $17
 #define CP0_WATCHLO $18
@@ -393,6 +394,14 @@
 #define  CAUSEF_CE		(_ULCAST_(3)   << 28)
 #define  CAUSEB_BD		31
 #define  CAUSEF_BD		(_ULCAST_(1)   << 31)
+
+/*
+ * Bits in the coprocessor 0 EBase register
+ */
+#define EBASEB_CPUNUM		0
+#define EBASEF_CPUNUM		(0x3ff << EBASEB_CPUNUM)
+#define EBASEB_EXPBASE		12
+#define EBASEF_EXPBASE		(0x3ffff << EBASEB_EXPBASE)
 
 /*
  * Bits in the coprocessor 0 config register.

@@ -206,14 +206,37 @@ _start:
 	RVECENT(romReserved,125)
 	RVECENT(romReserved,126)
 	RVECENT(romReserved,127)
+	XVECENT(romExcHandle,0x400);	/* bfc00400: Int, CauseIV=1 */
+	RVECENT(romReserved,129);
+	RVECENT(romReserved,130);
+	RVECENT(romReserved,131);
+	RVECENT(romReserved,132);
+	RVECENT(romReserved,133);
+	RVECENT(romReserved,134);
+	RVECENT(romReserved,135);
+	RVECENT(romReserved,136);
+	RVECENT(romReserved,137);
+	RVECENT(romReserved,138);
+	RVECENT(romReserved,139);
+	RVECENT(romReserved,140);
+	RVECENT(romReserved,141);
+	RVECENT(romReserved,142);
+	RVECENT(romReserved,143);
+	XVECENT(romExcHandle,0x480);	/* bfc00480: EJTAG debug exception */
 
 	/*
 	 * We hope there are no more reserved vectors!
-	 * 128 * 8 == 1024 == 0x400
-	 * so this is address R_VEC+0x400 == 0xbfc00400
+	 * 144 * 8 == 1024 == 0x488
+	 * so this is address R_VEC+0x488 == 0xbfc00488
 	 */
 	.align 4
 reset:
+#ifdef CONFIG_SYS_MIPS_MULTI_CPU
+	mfc0	k0, CP0_EBASE
+	and	k0, EBASEF_CPUNUM
+	bne	k0, zero, mips_handler_cpux
+	nop
+#endif
 
 	/* Clear watch registers */
 	mtc0	zero, CP0_WATCHLO
@@ -223,6 +246,16 @@ reset:
 	mtc0	zero, CP0_CAUSE
 
 	setup_c0_status_reset
+
+#if defined(CONFIG_MIPS24KEC) || defined(CONFIG_MIPS34KC)
+	/* CONFIG7 register */
+	/* Erratum "RPS May Cause Incorrect Instruction Execution"
+	 * for 24KEC and 34KC */
+	mfc0	k0, CP0_CONFIG, 7
+	li	k1, MIPS_CONF7_RPS
+	or	k0, k1
+	mtc0	k0, CP0_CONFIG, 7
+#endif
 
 	/* Init Timer */
 	mtc0	zero, CP0_COUNT
@@ -383,3 +416,15 @@ romReserved:
 
 romExcHandle:
 	b	romExcHandle
+
+	/* Additional handlers.
+	 */
+#ifdef CONFIG_SYS_MIPS_MULTI_CPU
+/*
+ * Stop Slave CPUs
+ */
+mips_handler_cpux:
+	wait;
+	b mips_handler_cpux;
+	nop;
+#endif

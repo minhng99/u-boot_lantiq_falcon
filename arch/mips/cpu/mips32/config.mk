@@ -29,10 +29,12 @@
 #
 MIPSFLAGS = -march=mips32r2
 
+ifndef ENDIANNESS
 ifneq (,$(findstring 4KCle,$(CROSS_COMPILE)))
 ENDIANNESS = -EL
 else
 ENDIANNESS = -EB
+endif
 endif
 
 MIPSFLAGS += $(ENDIANNESS)

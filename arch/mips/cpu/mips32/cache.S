@@ -41,7 +41,11 @@
  */
 #define MIPS_MAX_CACHE_SIZE	0x10000
 
+#ifdef CONFIG_SYS_MIPS_CACHE_INDEX_BASE
+#define INDEX_BASE	CONFIG_SYS_MIPS_CACHE_INDEX_BASE
+#else
 #define INDEX_BASE	CKSEG0
+#endif
 
 	.macro	cache_op op addr
 	.set	push
