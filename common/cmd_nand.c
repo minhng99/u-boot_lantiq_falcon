@@ -40,7 +40,7 @@ int find_dev_and_part(const char *id, struct mtd_device **dev,
 static int nand_dump(nand_info_t *nand, ulong off, int only_oob, int repeat)
 {
 	int i;
-	u_char *datbuf, *oobbuf, *p;
+	u_char *datbuf, *oobbuf;
 	static loff_t last;
 
 	if (repeat)
@@ -71,25 +71,13 @@ static int nand_dump(nand_info_t *nand, ulong off, int only_oob, int repeat)
 		return 1;
 	}
 	printf("Page %08lx dump:\n", off);
-	i = nand->writesize >> 4;
-	p = datbuf;
 
-	while (i--) {
-		if (!only_oob)
-			printf("\t%02x %02x %02x %02x %02x %02x %02x %02x"
-			       "  %02x %02x %02x %02x %02x %02x %02x %02x\n",
-			       p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7],
-			       p[8], p[9], p[10], p[11], p[12], p[13], p[14],
-			       p[15]);
-		p += 16;
-	}
+	if (!only_oob)
+		print_buffer(off, datbuf, 1, nand->writesize, 16);
+
 	puts("OOB:\n");
-	i = nand->oobsize >> 3;
-	while (i--) {
-		printf("\t%02x %02x %02x %02x %02x %02x %02x %02x\n",
-		       p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7]);
-		p += 8;
-	}
+	print_buffer(0, datbuf+nand->writesize, 1, nand->oobsize, 8);
+
 	free(datbuf);
 	free(oobbuf);
 
