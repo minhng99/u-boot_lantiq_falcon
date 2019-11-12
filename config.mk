@@ -290,6 +290,25 @@ export	CONFIG_SYS_TEXT_BASE PLATFORM_CPPFLAGS PLATFORM_RELFLAGS CPPFLAGS CFLAGS 
 
 #########################################################################
 
+ifndef KBUILD_VERBOSE
+  KBUILD_VERBOSE:=0
+endif
+ifeq ("$(origin V)", "command line")
+  KBUILD_VERBOSE:=$(V)
+endif
+ifeq (,$(findstring s,$(MAKEFLAGS)))
+  KBUILD_VERBOSE:=0
+endif
+
+ifneq ($(KBUILD_VERBOSE),0)
+  define MESSAGE
+    @printf " %s %s/%s\n" $(1) $(2) $(3)
+  endef
+else
+  define MESSAGE
+  endef
+endif
+
 # Allow boards to use custom optimize flags on a per dir/file basis
 BCURDIR = $(subst $(SRCTREE)/,,$(CURDIR:$(obj)%=%))
 ALL_AFLAGS = $(AFLAGS) $(AFLAGS_$(BCURDIR)/$(@F)) $(AFLAGS_$(BCURDIR))
@@ -302,14 +321,19 @@ ALL_CFLAGS += $(EXTRA_CPPFLAGS)
 EXTRA_CPPFLAGS_DEP = $(CPPFLAGS_$(BCURDIR)/$(addsuffix .o,$(basename $<))) \
 		$(CPPFLAGS_$(BCURDIR))
 $(obj)%.s:	%.S
+	$(call MESSAGE, [CPP],$(subst $(SRCTREE)/,,$(CURDIR)),$<)
 	$(CPP) $(ALL_AFLAGS) -o $@ $<
 $(obj)%.o:	%.S
+	$(call MESSAGE, [AS], $(subst $(SRCTREE)/,,$(CURDIR)),$<)
 	$(CC)  $(ALL_AFLAGS) -o $@ $< -c
 $(obj)%.o:	%.c
+	$(call MESSAGE, [CC], $(subst $(SRCTREE)/,,$(CURDIR)),$<)
 	$(CC)  $(ALL_CFLAGS) -o $@ $< -c
 $(obj)%.i:	%.c
+	$(call MESSAGE, [CPP],$(subst $(SRCTREE)/,,$(CURDIR)),$<)
 	$(CPP) $(ALL_CFLAGS) -o $@ $< -c
 $(obj)%.s:	%.c
+	$(call MESSAGE, [CC], $(subst $(SRCTREE)/,,$(CURDIR)),$<)
 	$(CC)  $(ALL_CFLAGS) -o $@ $< -c -S
 
 #########################################################################
