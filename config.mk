@@ -219,10 +219,10 @@ CPPFLAGS += -fno-builtin -ffreestanding -nostdinc	\
 	-isystem $(gccincdir) -pipe $(PLATFORM_CPPFLAGS)
 
 ifdef BUILD_TAG
-CFLAGS := $(CPPFLAGS) -Wall -Wstrict-prototypes \
+CFLAGS := $(CPPFLAGS) -Wall -Wundef -Wstrict-prototypes \
 	-DBUILD_TAG='"$(BUILD_TAG)"'
 else
-CFLAGS := $(CPPFLAGS) -Wall -Wstrict-prototypes
+CFLAGS := $(CPPFLAGS) -Wall -Wundef -Wstrict-prototypes
 endif
 
 CFLAGS_SSP := $(call cc-option,-fno-stack-protector)

@@ -142,7 +142,7 @@ int abortboot(int bootdelay)
 		presskey_max = presskey_max > delaykey[i].len ?
 				    presskey_max : delaykey[i].len;
 
-#  if DEBUG_BOOTKEYS
+#  ifdef DEBUG_BOOTKEYS
 		printf("%s key:<%s>\n",
 		       delaykey[i].retry ? "delay" : "stop",
 		       delaykey[i].str ? delaykey[i].str : "NULL");
@@ -171,7 +171,7 @@ int abortboot(int bootdelay)
 			    memcmp (presskey + presskey_len - delaykey[i].len,
 				    delaykey[i].str,
 				    delaykey[i].len) == 0) {
-#  if DEBUG_BOOTKEYS
+#  ifdef DEBUG_BOOTKEYS
 				printf("got %skey\n",
 				       delaykey[i].retry ? "delay" : "stop");
 #  endif
@@ -186,7 +186,7 @@ int abortboot(int bootdelay)
 		}
 	} while (!abort && get_ticks() <= etime);
 
-#  if DEBUG_BOOTKEYS
+#  ifdef DEBUG_BOOTKEYS
 	if (!abort)
 		puts("key timeout\n");
 #  endif

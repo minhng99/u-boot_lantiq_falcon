@@ -35,7 +35,7 @@
 #define NTP_MODE_PRIVATE	7	/* Reserved for private use */
 
 struct sntp_pkt_t {
-#if __LITTLE_ENDIAN
+#ifdef __LITTLE_ENDIAN
 	uchar mode:3;
 	uchar vn:3;
 	uchar li:2;

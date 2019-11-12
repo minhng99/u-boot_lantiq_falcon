@@ -1260,7 +1260,7 @@ static inline void tlb_probe(void)
 
 static inline void tlb_read(void)
 {
-#if MIPS34K_MISSED_ITLB_WAR
+#ifdef MIPS34K_MISSED_ITLB_WAR
 	int res = 0;
 
 	__asm__ __volatile__(
@@ -1282,7 +1282,7 @@ static inline void tlb_read(void)
 		"tlbr\n\t"
 		".set reorder");
 
-#if MIPS34K_MISSED_ITLB_WAR
+#ifdef MIPS34K_MISSED_ITLB_WAR
 	if ((res & _ULCAST_(1)))
 		__asm__ __volatile__(
 		"	.set	push				\n"

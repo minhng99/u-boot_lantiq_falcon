@@ -337,7 +337,7 @@ export PLATFORM_LIBS
 LDPPFLAGS += \
 	-include $(TOPDIR)/include/u-boot/u-boot.lds.h \
 	$(shell $(LD) --version | \
-	  sed -ne 's/GNU ld version \([0-9][0-9]*\)\.\([0-9][0-9]*\).*/-DLD_MAJOR=\1 -DLD_MINOR=\2/p')
+	  sed -ne 's/GNU ld [^0-9]*\([0-9][0-9]*\)\.\([0-9][0-9]*\).*/-DLD_MAJOR=\1 -DLD_MINOR=\2/p')
 
 __OBJS := $(subst $(obj),,$(OBJS))
 __LIBS := $(subst $(obj),,$(LIBS)) $(subst $(obj),,$(LIBBOARD))

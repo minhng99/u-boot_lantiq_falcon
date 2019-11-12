@@ -15,7 +15,7 @@ struct serial_device {
 	int (*tstc) (void);
 	void (*putc) (const char c);
 	void (*puts) (const char *s);
-#if CONFIG_POST & CONFIG_SYS_POST_UART
+#if defined(CONFIG_POST) && defined(CONFIG_SYS_POST_UART) && (CONFIG_POST & CONFIG_SYS_POST_UART)
 	void (*loop) (int);
 #endif
 

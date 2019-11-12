@@ -111,9 +111,9 @@ typedef unsigned int uint;
 #include <linux/types.h>
 #include <asm/byteorder.h>
 
-#if __SIZEOF_LONG__ == 8
+#if defined(__SIZEOF_LONG__) && __SIZEOF_LONG__ == 8
 # define __WORDSIZE	64
-#elif __SIZEOF_LONG__ == 4
+#elif defined(__SIZEOF_LONG__) && __SIZEOF_LONG__ == 4
 # define __WORDSIZE	32
 #else
 /*
