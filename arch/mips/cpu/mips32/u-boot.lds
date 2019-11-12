@@ -2,6 +2,9 @@
  * (C) Copyright 2003
  * Wolfgang Denk Engineering, <wd@denx.de>
  *
+ * (C) Copyright 2011
+ * Thomas Langer, Lantiq Deutschland GmbH, <thomas.langer@lantiq.com>
+ *
  * See file CREDITS for list of people who contributed to this
  * project.
  *
@@ -21,6 +24,9 @@
  * MA 02111-1307 USA
  */
 
+/*
+OUTPUT_FORMAT("elf32-bigmips", "elf32-bigmips", "elf32-bigmips")
+*/
 OUTPUT_FORMAT("elf32-tradbigmips", "elf32-tradbigmips", "elf32-tradlittlemips")
 OUTPUT_ARCH(mips)
 ENTRY(_start)
@@ -41,7 +47,7 @@ SECTIONS
 	.data  : { *(.data*) }
 
 	. = .;
-	_gp = ALIGN(16) + 0x7ff0;
+	_gp = ALIGN(16);
 
 	.got : {
 	  __got_start = .;
