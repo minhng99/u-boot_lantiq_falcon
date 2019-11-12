@@ -537,6 +537,9 @@ SYSTEM_MAP = \
 $(obj)System.map:	$(obj)u-boot
 		@$(call SYSTEM_MAP,$<) > $(obj)System.map
 
+checkstack:	$(obj)u-boot
+	$(OBJDUMP) -d $(obj)u-boot | perl $(TOPDIR)/tools/checkstack.pl $(ARCH)
+
 #
 # Auto-generate the autoconf.mk file (which is included by all makefiles)
 #
