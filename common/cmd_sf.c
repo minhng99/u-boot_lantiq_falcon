@@ -310,3 +310,174 @@ U_BOOT_CMD(
 	"sf update addr offset len	- erase and write `len' bytes from memory\n"
 	"				  at `addr' to flash at `offset'"
 );
+
+static int sf_load_image(cmd_tbl_t *cmdtp, unsigned int bus,
+			 unsigned int cs, ulong offset, ulong addr, char *cmd)
+{
+	int r;
+	char *ep, *s;
+	size_t cnt;
+	image_header_t *hdr;
+	unsigned int speed = CONFIG_SF_DEFAULT_SPEED;
+	unsigned int mode = CONFIG_SF_DEFAULT_MODE;
+	struct spi_flash *new;
+#if defined(CONFIG_FIT)
+	const void *fit_hdr = NULL;
+#endif
+
+	s = strchr(cmd, '.');
+	if (s != NULL &&
+	    (strcmp(s, ".jffs2") && strcmp(s, ".e") && strcmp(s, ".i"))) {
+		printf("Unknown serial flash load suffix '%s'\n", s);
+		show_boot_progress(-53);
+		return 1;
+	}
+
+	new = spi_flash_probe(bus, cs, speed, mode);
+	if (!new) {
+		printf("Failed to initialize SPI flash at %u:%u\n", bus, cs);
+		return 1;
+	}
+
+	printf("\nLoading from %s, offset 0x%lx\n", new->name, offset);
+
+	cnt = sizeof(*hdr);
+	r = spi_flash_read(new, offset, cnt, (u_char *) addr);
+	if (r) {
+		puts("** Read error\n");
+		show_boot_progress (-56);
+		return 1;
+	}
+	show_boot_progress (56);
+
+	switch (genimg_get_format ((void *)addr)) {
+	case IMAGE_FORMAT_LEGACY:
+		hdr = (image_header_t *)addr;
+
+		show_boot_progress (57);
+		image_print_contents (hdr);
+
+		cnt = image_get_image_size (hdr);
+		break;
+#if defined(CONFIG_FIT)
+	case IMAGE_FORMAT_FIT:
+		fit_hdr = (const void *)addr;
+		puts ("Fit image detected...\n");
+
+		cnt = fit_get_size (fit_hdr);
+		break;
+#endif
+	default:
+		show_boot_progress (-57);
+		puts ("** Unknown image type\n");
+		return 1;
+	}
+	show_boot_progress (57);
+
+	r = spi_flash_read(new, offset, cnt, (u_char *) addr);
+	if (r) {
+		puts("** Read error\n");
+		show_boot_progress (-58);
+		return 1;
+	}
+	show_boot_progress (58);
+
+#if defined(CONFIG_FIT)
+	/* This cannot be done earlier, we need complete FIT image in RAM first */
+	if (genimg_get_format ((void *)addr) == IMAGE_FORMAT_FIT) {
+		if (!fit_check_format (fit_hdr)) {
+			show_boot_progress (-150);
+			puts ("** Bad FIT image format\n");
+			return 1;
+		}
+		show_boot_progress (151);
+		fit_print_contents (fit_hdr);
+	}
+#endif
+
+	/* Loading ok, update default load address */
+
+	load_addr = addr;
+
+	/* Check if we should attempt an auto-start */
+	if (((ep = getenv("autostart")) != NULL) && (strcmp(ep, "yes") == 0)) {
+		char *local_args[2];
+
+		local_args[0] = cmd;
+		local_args[1] = NULL;
+
+		printf("Automatic boot of image at addr 0x%08lx ...\n", addr);
+
+		do_bootm(cmdtp, 0, 1, local_args);
+		return 1;
+	}
+	return 0;
+}
+
+int do_sfboot(cmd_tbl_t * cmdtp, int flag, int argc, char * const argv[])
+{
+	char *boot_device = NULL;
+	ulong addr, offset = 0;
+	unsigned int bus = 0;
+	unsigned int cs;
+	char *endp;
+
+	show_boot_progress(52);
+	switch (argc) {
+	case 1:
+		addr = CONFIG_SYS_LOAD_ADDR;
+		boot_device = getenv("bootdevice");
+		break;
+	case 2:
+		addr = simple_strtoul(argv[1], NULL, 16);
+		boot_device = getenv("bootdevice");
+		break;
+	case 3:
+		addr = simple_strtoul(argv[1], NULL, 16);
+		boot_device = argv[2];
+		break;
+	case 4:
+		addr = simple_strtoul(argv[1], NULL, 16);
+		boot_device = argv[2];
+		offset = simple_strtoul(argv[3], NULL, 16);
+		break;
+	default:
+		show_boot_progress(-53);
+		return cmd_usage(cmdtp);
+	}
+
+	show_boot_progress(53);
+	if (!boot_device) {
+		puts("\n** No boot device **\n");
+		show_boot_progress(-54);
+		return 1;
+	}
+	show_boot_progress(54);
+
+	cs = simple_strtoul(boot_device, &endp, 0);
+	if (*boot_device == 0 || (*endp != 0 && *endp != ':')) {
+		puts("\n** No boot device **\n");
+		return 1;
+	}
+	if (*endp == ':') {
+		if (endp[1] == 0) {
+			puts("\n** No boot device **\n");
+			return 1;
+		}
+
+		bus = cs;
+		cs = simple_strtoul(endp + 1, &endp, 0);
+		if (*endp != 0) {
+			puts("\n** No boot device **\n");
+			return 1;
+		}
+	}
+	show_boot_progress(55);
+
+	return sf_load_image(cmdtp, bus, cs, offset, addr, argv[0]);
+}
+
+U_BOOT_CMD(sfboot, 4, 1, do_sfboot,
+	"boot from serial flash device",
+	"[[[loadAddr] dev] offset]"
+);
